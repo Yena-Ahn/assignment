@@ -10,6 +10,8 @@ const { Search } = Input;
 type InputRef = GetRef<typeof Input>;
 
 
+
+
 function App() {
     /***************************************
      * HOOKS & HANDLERS
@@ -24,6 +26,7 @@ function App() {
     const [isSearch, setIsSearch] = React.useState<boolean>(false);
     const searchInput = React.useRef<InputRef>(null);
     const [currentPage, setCurrentPage] = React.useState<number>(1);
+    const [pageSize, setPageSize] = React.useState<number>(10);
 
 
     const handleSearch = (
@@ -32,19 +35,16 @@ function App() {
 
         if (!selectedKeys[0]) { //null, undefined, empty string
             setIsSearch(false);
-            fetchData(0,10);
             return
         }
- 
+        setIsSearch(true);
         setSearchText(selectedKeys[0]);
-        fetchSearchData(selectedKeys[0]);
   
       };
     
       const handleReset = (clearFilters: () => void) => {
         clearFilters();
-        setSearchText('');
-        setCurrentPage(1);
+
       };
 
     const getColumnSearchProps = (dataIndex: Comment["email"]): TableColumnType<Comment> => ({
@@ -117,25 +117,34 @@ function App() {
             dataIndex: 'body',
             key: 'body'
         }
-    ]
+    ];
 
-    const fetchData = async (start : number, end : number) => {
+    const fetchData = React.useCallback(async (start : number, end : number) => {
         setLoading(true);
-        const response = await fetch(`https://jsonplaceholder.typicode.com/comments?_start=${start}&_end=${end}`);
-        const totalCount = response.headers.get("X-Total-Count");
-        setTotalDataCount(parseInt(totalCount || '0'));
-        const data = await response.json();
-        setDataSource(data);
+        try {
+            const queryString = isSearch ? `email=${searchText}` : `_start=${start}&_end=${end}`;
+
+            const response = await fetch(`https://jsonplaceholder.typicode.com/comments?${queryString}`);
+
+            if (response.ok) {
+                const totalCount = response.headers.get("X-Total-Count");
+                setTotalDataCount(parseInt(totalCount || '0'));
+                const data = await response.json();
+                setDataSource(data);
+            } else {
+                throw new Error(JSON.stringify({ code: response.status, message: response.statusText }));
+            }
+
+        } catch (error) {
+              console.error(error);
+            }
+        
         setLoading(false);
-    }
+    }, [setLoading, setTotalDataCount, setDataSource, isSearch, searchText]);
 
-    const handlePageChange = (pagination: any) => {
-        const { pageSize, current } = pagination;
-        const start = (current-1) * pageSize;
-        const end = current * pageSize;
-        fetchData(start, end);
+  
 
-    }
+
 
     const handleOnClick = (data : Comment) => {
         setSelectedData(data);
@@ -143,53 +152,37 @@ function App() {
         
     }
 
-    const fetchSearchData = async (value: string) => {
-       
-        setLoading(true);
-        if (value === "") {
-            setIsSearch(false);
-            fetchData(0,10)
-            return
-        }
-        setIsSearch(true)
-        setSearchText(value);
-        const response = await fetch(`https://jsonplaceholder.typicode.com/comments?email=${value}`); 
-        const totalCount = response.headers.get("X-Total-Count");
-        setTotalDataCount(parseInt(totalCount || '0'));
-        const data = await response.json();
-        setDataSource(data);
-        setLoading(false);
-    }
+
 
     const handleOnSearch = (value:string, event:any, config:any) => {
         const {source} = config;
+        
         if (source === "clear") {
             setCurrentPage(1);
         }
-        fetchSearchData(value);
+        if (value === "") {
+            setIsSearch(false);
+
+        } else {
+            setSearchText(value);
+            setIsSearch(true);
+            
+        }
     }
 
-    const fetchNextSearchData = async (start:number, end:number) => {
-        setLoading(true);
-        const response = await fetch(`https://jsonplaceholder.typicode.com/comments?email=${searchText}&_start=${start}&_end=${end}`); 
-        const data = await response.json();
-        setDataSource(data);
-        setLoading(false);
-   
-
+    const handleOnTableChange = (pagination: any) => {
+        setCurrentPage(pagination.current);
+        setPageSize(pagination.pageSize);
+        
     }
 
-    const handleSearchPageChange = (pagination: any) => {
-        const { pageSize, current } = pagination;
-        const start = (current-1) * pageSize;
-        const end = current * pageSize;
-        fetchNextSearchData(start, end);
-    }
+
+
 
     React.useEffect(() => {
-        fetchData(0,10);
+        fetchData((currentPage-1)*pageSize,currentPage*pageSize);
         
-    }, []);
+    },[fetchData, isSearch, currentPage, pageSize]);
 
 
 
@@ -202,8 +195,8 @@ function App() {
     loading={loading} 
     dataSource={dataSource} 
     columns={columns}
-    pagination={{total: totalDataCount, pageSize: 10, showSizeChanger:false, current: currentPage, onChange: (current) => setCurrentPage(current), defaultCurrent: 1}}
-    onChange={isSearch?handleSearchPageChange:handlePageChange}
+    pagination={{total: totalDataCount}}
+    onChange={handleOnTableChange}
     onRow={(record: Comment) => ({
         onClick: () => {handleOnClick(record);}
     })}
