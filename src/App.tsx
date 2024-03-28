@@ -155,11 +155,11 @@ function App() {
 
 
     const handleOnSearch = (value:string, event:any, config:any) => {
-        const {source} = config;
+        // const {source} = config;
         
-        if (source === "clear") {
-            setCurrentPage(1);
-        }
+        // if (source === "clear") {
+        //     setCurrentPage(1);
+        // } // Is resetting pagenum on clear conventional? or leave it as before search
         if (value === "") {
             setIsSearch(false);
 
@@ -170,7 +170,11 @@ function App() {
         }
     }
 
-    const handleOnTableChange = (pagination: any) => {
+    const handleOnTableChange = (pagination : any, _filters : any, _sorter : any, extra : any) => {
+
+        if (pagination.pageSize < extra.currentDataSource.length) {
+            setDataSource([]);
+        }
         setCurrentPage(pagination.current);
         setPageSize(pagination.pageSize);
         
@@ -182,7 +186,7 @@ function App() {
     React.useEffect(() => {
         fetchData((currentPage-1)*pageSize,currentPage*pageSize);
         
-    },[fetchData, isSearch, currentPage, pageSize]);
+    },[fetchData, currentPage, pageSize]);
 
 
 
@@ -195,7 +199,7 @@ function App() {
     loading={loading} 
     dataSource={dataSource} 
     columns={columns}
-    pagination={{total: totalDataCount}}
+    pagination={{total: totalDataCount, current: currentPage}}
     onChange={handleOnTableChange}
     onRow={(record: Comment) => ({
         onClick: () => {handleOnClick(record);}
