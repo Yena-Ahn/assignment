@@ -3,9 +3,7 @@ import './App.css';
 import Modal from './components/Modal';
 import {Table, Input, TableColumnsType, TableColumnType, GetRef, Button, Space} from "antd";
 import type { Comment } from './types';
-import type { SearchProps } from 'antd/es/input/Search';
 import { SearchOutlined } from '@ant-design/icons';
-import type { FilterDropdownProps } from 'antd/es/table/interface';
 
 
 const { Search } = Input;
@@ -25,13 +23,15 @@ function App() {
     const [searchText, setSearchText] = React.useState<string>("");
     const [isSearch, setIsSearch] = React.useState<boolean>(false);
     const searchInput = React.useRef<InputRef>(null);
+    const [currentPage, setCurrentPage] = React.useState<number>(1);
 
 
     const handleSearch = (
         selectedKeys: string[],
       ) => {
 
-        if (selectedKeys[0] == null || selectedKeys[0] == "") {
+        console.log(selectedKeys[0]);
+        if (!selectedKeys[0]) { //null, undefined, empty string
             setIsSearch(false);
             fetchData(0,10);
             return
@@ -45,6 +45,7 @@ function App() {
       const handleReset = (clearFilters: () => void) => {
         clearFilters();
         setSearchText('');
+        setCurrentPage(1);
       };
 
     const getColumnSearchProps = (dataIndex: Comment["email"]): TableColumnType<Comment> => ({
@@ -144,6 +145,7 @@ function App() {
     }
 
     const fetchSearchData = async (value: string) => {
+       
         setLoading(true);
         if (value === "") {
             setIsSearch(false);
@@ -158,6 +160,14 @@ function App() {
         const data = await response.json();
         setDataSource(data);
         setLoading(false);
+    }
+
+    const handleOnSearch = (value:string, event:any, config:any) => {
+        const {source} = config;
+        if (source === "clear") {
+            setCurrentPage(1);
+        }
+        fetchSearchData(value);
     }
 
     const fetchNextSearchData = async (start:number, end:number) => {
@@ -188,12 +198,12 @@ function App() {
      * RENDER
      **************************************/
     return <div className="App">{/* INSERT CODE HERE */}
-    <Search placeholder='Input user email here' allowClear onSearch={fetchSearchData} style={{width:500}}/>
+    <Search placeholder='Input user email here' allowClear onSearch={handleOnSearch} style={{width:500}} />
     <Table 
     loading={loading} 
     dataSource={dataSource} 
     columns={columns}
-    pagination={{total: totalDataCount, pageSize: 10, showSizeChanger:false}}
+    pagination={{total: totalDataCount, pageSize: 10, showSizeChanger:false, current: currentPage, onChange: (current) => setCurrentPage(current), defaultCurrent: 1}}
     onChange={isSearch?handleSearchPageChange:handlePageChange}
     onRow={(record: Comment) => ({
         onClick: () => {handleOnClick(record);}
