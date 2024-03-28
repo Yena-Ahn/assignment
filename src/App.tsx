@@ -30,7 +30,6 @@ function App() {
         selectedKeys: string[],
       ) => {
 
-        console.log(selectedKeys[0]);
         if (!selectedKeys[0]) { //null, undefined, empty string
             setIsSearch(false);
             fetchData(0,10);
